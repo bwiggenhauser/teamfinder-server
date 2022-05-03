@@ -1,0 +1,118 @@
+const express = require("express");
+const app = express();
+const http = require("http");
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
+
+const helpers = require("./helpers");
+const teamFinderConfig = require("./teamfinder-config.json");
+
+app.use(express.static("public"));
+
+// // SPRUCHSAMMLUNG
+let spruchsammlung = require("./spruchsammlung.json");
+
+// // FREEZE OBJECTS -> CANT BE CHANGED
+const imageLinks = Object.freeze(helpers.image_links);
+const allPlayers = Object.freeze(teamFinderConfig.all_players);
+
+let activePlayers = helpers.copyArray(allPlayers);
+let lastSelection = "";
+let firstRoll = true;
+
+// let configuration = getConfiguration();
+
+// function getConfiguration() {
+// 	const amount = 180;
+// 	let config = [];
+
+// 	for (let i = 0; i < amount; i++) {
+// 		let new_player = {};
+// 		new_player["name"] = helpers.getRandomElement(activePlayers);
+// 		new_player["img"] = helpers.getRarity(helpers.randomValue(1, 12));
+// 		new_player["sentence"] = helpers.getRandomElement(
+// 			spruchsammlung[new_player["name"]]
+// 		);
+// 		config.push(new_player);
+// 	}
+// 	return config;
+// }
+
+// function updatePlayers(player) {
+// 	activePlayers = [...activePlayers];
+// 	if (activePlayers.includes(player)) {
+// 		if (activePlayers.length < 2) {
+// 			return;
+// 		}
+// 		// REMOVE PLAYER FROM ACTIVE PLAYERS
+// 		const index = activePlayers.indexOf(player);
+// 		activePlayers.splice(index, 1);
+// 	} else {
+// 		// ADD PLAYER TO ACTIVE PLAYERS
+// 		activePlayers.push(player);
+// 	}
+// }
+
+// app.get("/", (req, res) => {
+// 	res.sendFile(__dirname + "/index.html");
+// });
+
+// io.on("connection", (socket) => {
+// 	io.emit("all-players", allPlayers);
+// 	io.emit("active-players", activePlayers);
+// 	io.emit("image-links", imageLinks);
+// 	io.emit("initial-configuration", configuration);
+// 	io.emit("is-first-roll", firstRoll);
+
+// 	socket.on("emit-roll", () => {
+// 		const index = activePlayers.indexOf(lastSelection);
+
+// 		if (index > -1) {
+// 			// Still players in the race
+// 			activePlayers.splice(index, 1);
+// 		}
+
+// 		io.emit("active-players", activePlayers);
+
+// 		configuration = getConfiguration();
+// 		io.emit("configuration", configuration);
+
+// 		const val = helpers.randomValue(22000, 25000);
+
+// 		// 1500 -> CARDLIST WIDTH  /2 -> CENTER  150 -> CARD WIDTH
+// 		const selectedPlayer =
+// 			configuration[Math.floor((val + 1500 / 2) / 150)];
+// 		lastSelection = selectedPlayer.name;
+// 		io.emit("is-first-roll", firstRoll);
+// 		io.emit("roll", val);
+// 		firstRoll = false;
+// 	});
+
+// 	// SPIELER WERDEN ZUM POOL HINZUGEFÜGT ODER ENTFERNT
+// 	socket.on("update-player", (player) => {
+// 		updatePlayers(player);
+// 		configuration = getConfiguration();
+// 		io.emit("active-players", activePlayers);
+// 		io.emit("configuration", configuration);
+// 		firstRoll = true;
+// 		io.emit("is-first-roll", firstRoll);
+// 	});
+
+// 	// STANDARDEINSTELLUNGEN
+// 	socket.on("reset", () => {
+// 		activePlayers = [...allPlayers];
+// 		lastSelection = "";
+// 		configuration = getConfiguration();
+// 		firstRoll = true;
+
+// 		io.emit("is-first-roll", firstRoll);
+// 		io.emit("active-players", activePlayers);
+// 		io.emit("configuration", configuration);
+// 	});
+// });
+
+
+server.listen(process.env.PORT || 3000, () => {
+	console.log("Listening on port 3000 ...");
+});
