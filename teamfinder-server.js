@@ -3,11 +3,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 
 const port = process.env.PORT || 3001;
-// const index = require("./routes/index");
-
 const app = express();
-// app.use(index);
-
 const server = http.createServer(app);
 
 const io = socketIo(server, {
@@ -17,98 +13,81 @@ const io = socketIo(server, {
 });
 
 const helpers = require("./helpers");
+const playersClass = require("./players");
 const teamFinderConfig = require("./teamfinder-config.json");
-let spruchsammlung = require("./spruchsammlung.json");
+const spruchsammlung = require("./spruchsammlung.json");
 
 // FREEZE OBJECTS -> CANT BE CHANGED
 const imageLinks = Object.freeze(helpers.image_links);
 const allPlayers = Object.freeze(teamFinderConfig.all_players);
+const playerController = new playersClass.Players(allPlayers);
 
-let activePlayers = [...allPlayers];
-let lastSelection = "";
+let configuration = getConfiguration(playerController.activePlayers);
+
 let firstRoll = true;
-
-let configuration = getConfiguration();
 
 function getConfiguration() {
 	const amount = 180;
 	let config = [];
 
 	for (let i = 0; i < amount; i++) {
-		let new_player = {};
-		new_player["name"] = helpers.getRandomElement(activePlayers);
-		new_player["img"] = helpers.getRarity(helpers.randomValue(1, 12));
-		new_player["sentence"] = helpers.getRandomElement(
-			spruchsammlung[new_player["name"]]
-		);
-		config.push(new_player);
+		const selected = playerController.getRandomActivePlayer();
+		config.push({
+			name: selected,
+			img: helpers.getRarity(helpers.randomValue(1, 12)),
+			sentence: helpers.getRandomElement(["Spruch1", "Spruch2"]),
+		});
 	}
 	return config;
 }
 
-// Add or Remove player from active players
-function updatePlayers(player) {
-	activePlayers = [...activePlayers];
-	if (!activePlayers.includes(player)) {
-		activePlayers.push(player);
-		return;
-	}
-	// LAST PLAYER CANNOT BE REMOVED
-	if (activePlayers.length < 2) {
-		return;
-	}
-
-	// REMOVE PLAYER FROM ACTIVE PLAYERS
-	const index = activePlayers.indexOf(player);
-	activePlayers.splice(index, 1);
-}
-
 io.on("connection", (socket) => {
-	io.emit("all-players", allPlayers);
-	io.emit("active-players", activePlayers);
+	io.emit("all-players", playerController.allPlayers);
+	io.emit("active-players", playerController.activePlayers);
 	io.emit("image-links", imageLinks);
 	io.emit("initial-configuration", configuration);
 	io.emit("is-first-roll", firstRoll);
 
 	socket.on("emit-roll", () => {
 		// UPDATE ACTIVE PLAYERS
-		updatePlayers(lastSelection);
-		io.emit("active-players", activePlayers);
+		playerController.togglePlayer(playerController.lastSelection);
+		io.emit("active-players", playerController.activePlayers);
 
 		// UPDATE CONFIGURATION
-		configuration = getConfiguration();
+		configuration = getConfiguration(playerController.activePlayers);
 		io.emit("configuration", configuration);
 
 		const val = helpers.randomValue(22000, 25000);
 
 		// 1500 -> CARDLIST WIDTH  /2 -> CENTER  150 -> CARD WIDTH
-		const selectedPlayer =
-			configuration[Math.floor((val + 1500 / 2) / 150)];
-		lastSelection = selectedPlayer.name;
+		playerController.lastSelection = configuration[Math.floor((val + 1500 / 2) / 160)].name;
+
 		io.emit("is-first-roll", firstRoll);
-		io.emit("roll", val);
 		firstRoll = false;
+
+		io.emit("roll", val);
 	});
 
 	// SPIELER WERDEN ZUM POOL HINZUGEFÜGT ODER ENTFERNT
 	socket.on("update-player", (player) => {
-		updatePlayers(player);
-		configuration = getConfiguration();
-		io.emit("active-players", activePlayers);
+		playerController.togglePlayer(player);
+		io.emit("active-players", playerController.activePlayers);
+
+		configuration = getConfiguration(playerController.activePlayers);
 		io.emit("configuration", configuration);
+
 		firstRoll = true;
 		io.emit("is-first-roll", firstRoll);
 	});
 
 	// STANDARDEINSTELLUNGEN
 	socket.on("reset", () => {
-		activePlayers = [...allPlayers];
-		lastSelection = "";
-		configuration = getConfiguration();
+		playerController.resetActivePlayers();
+		configuration = getConfiguration(playerController.activePlayers);
 		firstRoll = true;
 
 		io.emit("is-first-roll", firstRoll);
-		io.emit("active-players", activePlayers);
+		io.emit("active-players", playerController.activePlayers);
 		io.emit("configuration", configuration);
 	});
 });

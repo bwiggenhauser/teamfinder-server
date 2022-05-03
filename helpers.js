@@ -4,12 +4,12 @@ function randomValue(min, max) {
 }
 
 function copyArray(toCopy) {
-    // Copy array in parameters and returns it -> Safe to use
-    let copy = []
-    for (let i = 0; i < toCopy.length; i++) {
-        copy.push(toCopy[i])
-    }
-    return copy
+	// Copy array in parameters and returns it -> Safe to use
+	let copy = [];
+	for (let i = 0; i < toCopy.length; i++) {
+		copy.push(toCopy[i]);
+	}
+	return copy;
 }
 
 function getRarity(value) {
@@ -23,6 +23,10 @@ function getRarity(value) {
 }
 
 function getRandomElement(items) {
+	if (items === undefined) {
+		console.log("Items are undefined!");
+		return "Error";
+	}
 	return items[Math.floor(Math.random() * items.length)];
 }
 
@@ -88,7 +92,7 @@ const image_links = {
 
 module.exports = {
 	randomValue,
-    copyArray,
+	copyArray,
 	getRarity,
 	new_seed,
 	getRandomElement,
