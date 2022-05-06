@@ -4,11 +4,21 @@ class Players {
 	constructor(allPlayers) {
 		this.allPlayers = allPlayers;
 		this.activePlayers = allPlayers;
-        this.lastSelection  = "";
+		this.allTemporaryPlayers = [];
+		this.lastSelection = "";
+		this.setAllTemporaryPlayers();
+	}
+
+	setAllTemporaryPlayers() {
+		let c = this.allPlayers.concat(this.activePlayers);
+		let d = c.filter((item, pos) => c.indexOf(item) === pos);
+		this.allTemporaryPlayers = d;
 	}
 
 	resetActivePlayers() {
 		this.activePlayers = this.allPlayers;
+        this.lastSelection = "";
+		this.setAllTemporaryPlayers();
 	}
 
 	getRandomActivePlayer() {
@@ -21,7 +31,10 @@ class Players {
 		}
 
 		if (!this.activePlayers.includes(player)) {
-			this.activePlayers.push(player);
+			let newActive = [...this.activePlayers];
+			newActive.push(player);
+			this.activePlayers = newActive;
+			this.setAllTemporaryPlayers();
 			return;
 		}
 
@@ -33,6 +46,7 @@ class Players {
 		let spliced = [...this.activePlayers];
 		spliced.splice(index, 1);
 		this.activePlayers = spliced;
+		this.setAllTemporaryPlayers();
 	}
 }
 

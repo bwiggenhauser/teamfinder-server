@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3333;
 const app = express();
 const server = http.createServer(app);
 
@@ -26,6 +26,13 @@ let configuration = getConfiguration(playerController.activePlayers);
 
 let firstRoll = true;
 
+function getSpruch(player) {
+	if (!allPlayers.includes(player)) {
+		return '"Auf Baggage kann jeder jeden von überall sehen."';
+	}
+	return helpers.getRandomElement(spruchsammlung[player]);
+}
+
 function getConfiguration() {
 	const amount = 180;
 	let config = [];
@@ -35,7 +42,7 @@ function getConfiguration() {
 		config.push({
 			name: selected,
 			img: helpers.getRarity(helpers.randomValue(1, 12)),
-			sentence: helpers.getRandomElement(["Spruch1", "Spruch2"]),
+			sentence: getSpruch(selected),
 		});
 	}
 	return config;
@@ -44,14 +51,18 @@ function getConfiguration() {
 io.on("connection", (socket) => {
 	io.emit("all-players", playerController.allPlayers);
 	io.emit("active-players", playerController.activePlayers);
+	io.emit("all-players-temp", playerController.allTemporaryPlayers);
 	io.emit("image-links", imageLinks);
-	io.emit("initial-configuration", configuration);
+	io.emit("configuration", configuration);
 	io.emit("is-first-roll", firstRoll);
 
 	socket.on("emit-roll", () => {
 		// UPDATE ACTIVE PLAYERS
 		playerController.togglePlayer(playerController.lastSelection);
 		io.emit("active-players", playerController.activePlayers);
+
+		playerController.setAllTemporaryPlayers();
+		io.emit("all-players-temp", playerController.allTemporaryPlayers);
 
 		// UPDATE CONFIGURATION
 		configuration = getConfiguration(playerController.activePlayers);
@@ -60,7 +71,11 @@ io.on("connection", (socket) => {
 		const val = helpers.randomValue(22000, 25000);
 
 		// 1500 -> CARDLIST WIDTH  /2 -> CENTER  150 -> CARD WIDTH
-		playerController.lastSelection = configuration[Math.floor((val + 1500 / 2) / 160)].name;
+		playerController.lastSelection =
+			configuration[Math.floor((val + 1500 / 2) / 155)].name;
+		console.log(
+			`Player ${playerController.lastSelection} has been selected.`
+		);
 
 		io.emit("is-first-roll", firstRoll);
 		firstRoll = false;
@@ -73,6 +88,9 @@ io.on("connection", (socket) => {
 		playerController.togglePlayer(player);
 		io.emit("active-players", playerController.activePlayers);
 
+		playerController.setAllTemporaryPlayers();
+		io.emit("all-players-temp", playerController.allTemporaryPlayers);
+
 		configuration = getConfiguration(playerController.activePlayers);
 		io.emit("configuration", configuration);
 
@@ -83,9 +101,13 @@ io.on("connection", (socket) => {
 	// STANDARDEINSTELLUNGEN
 	socket.on("reset", () => {
 		playerController.resetActivePlayers();
+		playerController.allTemporaryPlayers = playerController.allPlayers;
+
+		io.emit("all-players-temp", playerController.allTemporaryPlayers);
+
 		configuration = getConfiguration(playerController.activePlayers);
 		firstRoll = true;
-
+		console.log("Players have been reset.");
 		io.emit("is-first-roll", firstRoll);
 		io.emit("active-players", playerController.activePlayers);
 		io.emit("configuration", configuration);
